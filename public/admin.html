@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard Admin</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      padding: 20px;
+    }
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      background: #111827;
+      border: 1px solid #334155;
+      border-radius: 18px;
+      padding: 20px;
+      overflow: hidden;
+    }
+    h1 { margin-top: 0; }
+    .row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    input, button {
+      padding: 12px;
+      border-radius: 10px;
+      border: none;
+      font-size: 15px;
+    }
+    input {
+      background: #fff;
+      color: #111827;
+    }
+    button {
+      background: #2563eb;
+      color: #fff;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    .small {
+      color: #94a3b8;
+      font-size: 13px;
+      margin-bottom: 16px;
+    }
+    .stats {
+      margin: 10px 0 16px;
+      padding: 12px;
+      background: #0b1220;
+      border: 1px solid #1f2937;
+      border-radius: 12px;
+    }
+    .table-wrap {
+      overflow-x: auto;
+      border: 1px solid #1f2937;
+      border-radius: 12px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 800px;
+      background: #0b1220;
+    }
+    th, td {
+      padding: 12px;
+      border-bottom: 1px solid #1f2937;
+      text-align: left;
+      font-size: 14px;
+    }
+    th { background: #111827; }
+    .msg {
+      margin: 12px 0;
+      padding: 12px;
+      border-radius: 12px;
+      display: none;
+    }
+    .error { background: #7f1d1d; }
+    .ok { background: #14532d; }
+    .actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+    .actions button {
+      background: #16a34a;
+    }
+    .actions button.secondary {
+      background: #475569;
+    }
+    @media (max-width: 700px) {
+      .row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Dashboard Admin</h1>
+    <div class="small">Masukkan password admin untuk melihat data pendaftar.</div>
+
+    <div class="row">
+      <input type="password" id="adminPassword" placeholder="Password admin" />
+      <button onclick="loadData()">Muat Data</button>
+    </div>
+
+    <div class="actions">
+      <button class="secondary" onclick="downloadCSV()">Download CSV</button>
+      <button class="secondary" onclick="clearSearch()">Reset Pencarian</button>
+    </div>
+
+    <div id="message" class="msg"></div>
+    <div class="stats" id="stats">Total data: -</div>
+
+    <div class="row" style="grid-template-columns: 1fr;">
+      <input type="text" id="search" placeholder="Cari nama / WA / kota / ID..." oninput="filterData()" />
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>No</th>
+            <th>Nama</th>
+            <th>WA</th>
+            <th>Umur</th>
+            <th>Asal Kota</th>
+            <th>ID</th>
+            <th>Waktu</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody">
+          <tr><td colspan="7">Belum ada data.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    let allData = [];
+
+    function showMessage(text, type) {
+      const box = document.getElementById("message");
+      box.className = "msg " + type;
+      box.textContent = text;
+      box.style.display = "block";
+    }
+
+    function renderTable(data) {
+      const tbody = document.getElementById("tableBody");
+      if (!data.length) {
+        tbody.innerHTML = '<tr><td colspan="7">Data tidak ditemukan.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = data.map((item, index) => `
+        <tr>
+          <td>${index + 1}</td>
+          <td>${item.nama}</td>
+          <td>${item.wa}</td>
+          <td>${item.umur}</td>
+          <td>${item.asal_kota}</td>
+          <td>${item.id_game}</td>
+          <td>${item.created_at}</td>
+        </tr>
+      `).join("");
+    }
+
+    function filterData() {
+      const q = document.getElementById("search").value.toLowerCase();
+      const filtered = allData.filter(item =>
+        String(item.nama).toLowerCase().includes(q) ||
+        String(item.wa).toLowerCase().includes(q) ||
+        String(item.asal_kota).toLowerCase().includes(q) ||
+        String(item.id_game).toLowerCase().includes(q)
+      );
+      renderTable(filtered);
+    }
+
+    function clearSearch() {
+      document.getElementById("search").value = "";
+      renderTable(allData);
+    }
+
+    async function loadData() {
+      const password = document.getElementById("adminPassword").value.trim();
+
+      try {
+        const [resData, resStats] = await Promise.all([
+          fetch("/api/admin/registrations", {
+            headers: { "x-admin-password": password }
+          }),
+          fetch("/api/admin/stats", {
+            headers: { "x-admin-password": password }
+          })
+        ]);
+
+        const data = await resData.json();
+        const stats = await resStats.json();
+
+        if (!resData.ok) {
+          showMessage(data.message || "Gagal memuat data.", "error");
+          return;
+        }
+
+        allData = data;
+        renderTable(allData);
+        document.getElementById("stats").textContent = "Total data: " + (stats.total ?? allData.length);
+        showMessage("Data berhasil dimuat.", "ok");
+      } catch (err) {
+        showMessage("Server tidak bisa dihubungi.", "error");
+      }
+    }
+
+    function downloadCSV() {
+      if (!allData.length) {
+        showMessage("Tidak ada data untuk diunduh.", "error");
+        return;
+      }
+
+      const header = ["id", "nama", "wa", "umur", "asal_kota", "id_game", "created_at"];
+      const rows = allData.map(item => [
+        item.id,
+        item.nama,
+        item.wa,
+        item.umur,
+        item.asal_kota,
+        item.id_game,
+        item.created_at
+      ]);
+
+      const csv = [header, ...rows]
+        .map(row => row.map(value => `"${String(value).replaceAll('"', '""')}"`).join(","))
+        .join("\n");
+
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "data_pendaftar.csv";
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+  </script>
+</body>
+</html>
