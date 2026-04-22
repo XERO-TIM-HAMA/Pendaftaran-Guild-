@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Form Pendaftaran Guild</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #0f172a, #1e293b);
+      color: #fff;
+      padding: 20px;
+    }
+    .container {
+      max-width: 500px;
+      margin: 0 auto;
+      background: #ffffff10;
+      backdrop-filter: blur(10px);
+      border: 1px solid #ffffff20;
+      border-radius: 20px;
+      padding: 24px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.25);
+    }
+    h1 {
+      font-size: 24px;
+      margin: 0 0 8px;
+      text-align: center;
+    }
+    p {
+      text-align: center;
+      margin-top: 0;
+      color: #cbd5e1;
+      font-size: 14px;
+    }
+    label {
+      display: block;
+      margin: 14px 0 6px;
+      font-size: 14px;
+      color: #e2e8f0;
+    }
+    input {
+      width: 100%;
+      padding: 14px;
+      border: none;
+      border-radius: 12px;
+      outline: none;
+      font-size: 16px;
+      background: #fff;
+      color: #111827;
+    }
+    button {
+      width: 100%;
+      margin-top: 18px;
+      padding: 14px;
+      border: none;
+      border-radius: 12px;
+      background: #22c55e;
+      color: white;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    button:active { transform: scale(.99); }
+    .note {
+      margin-top: 16px;
+      font-size: 13px;
+      color: #cbd5e1;
+      text-align: center;
+    }
+    .success, .error {
+      margin-top: 14px;
+      padding: 12px;
+      border-radius: 12px;
+      display: none;
+      font-size: 14px;
+    }
+    .success { background: #14532d; }
+    .error { background: #7f1d1d; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Form Pendaftaran Guild</h1>
+    <p>Isi data dengan benar lalu tekan kirim</p>
+
+    <form id="formDaftar">
+      <label>Nama anda:</label>
+      <input type="text" id="nama" placeholder="Masukkan nama" required />
+
+      <label>Nomor WA:</label>
+      <input type="tel" id="wa" placeholder="Contoh: 08xxxxxxxxxx" required />
+
+      <label>Umur:</label>
+      <input type="number" id="umur" placeholder="Masukkan umur" required />
+
+      <label>Asal kota:</label>
+      <input type="text" id="asal_kota" placeholder="Contoh: Jakarta" required />
+
+      <label>ID:</label>
+      <input type="text" id="id" placeholder="Masukkan ID" required />
+
+      <button type="submit">Kirim Data</button>
+    </form>
+
+    <div id="success" class="success"></div>
+    <div id="error" class="error"></div>
+
+    <div class="note">
+      Data akan tersimpan ke server/database.
+    </div>
+  </div>
+
+  <script>
+    const form = document.getElementById("formDaftar");
+    const successBox = document.getElementById("success");
+    const errorBox = document.getElementById("error");
+
+    function showSuccess(msg) {
+      errorBox.style.display = "none";
+      successBox.style.display = "block";
+      successBox.textContent = msg;
+    }
+
+    function showError(msg) {
+      successBox.style.display = "none";
+      errorBox.style.display = "block";
+      errorBox.textContent = msg;
+    }
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const data = {
+        nama: document.getElementById("nama").value.trim(),
+        wa: document.getElementById("wa").value.trim(),
+        umur: document.getElementById("umur").value.trim(),
+        asal_kota: document.getElementById("asal_kota").value.trim(),
+        id: document.getElementById("id").value.trim()
+      };
+
+      try {
+        const res = await fetch("/api/register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data)
+        });
+
+        const result = await res.json();
+
+        if (!res.ok) {
+          showError(result.message || "Gagal mengirim data.");
+          return;
+        }
+
+        showSuccess(result.message);
+        form.reset();
+      } catch (err) {
+        showError("Server tidak bisa dihubungi.");
+      }
+    });
+  </script>
+</body>
+  </html>
